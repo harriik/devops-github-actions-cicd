@@ -1,0 +1,56 @@
+name: GitHub Actions CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Validate website files
+        run: |
+          test -f site/index.html
+          test -f site/style.css
+          echo "Website files are present."
+
+      - name: Run automated tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Prepare deployable website
+        run: |
+          mkdir -p _site
+          cp -R site/. _site/
+
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v5
